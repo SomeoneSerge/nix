@@ -40,7 +40,11 @@ Self-references however cannot be referred to by their path, because we are in t
 > which is computationally infeasible.
 > As far as we know, this is equivalent to finding a hash collision.
 
-Instead we just have a "has self reference" boolean, which will end up affecting the digest.
+Instead we have a "has self reference" boolean, which will end up affecting the digest.
+
+<!--
+TODO describe how self-references are [sentinal values](https://en.wikipedia.org/wiki/Sentinel_value) when hashing, and then those sentinal values are replaced with the actual computed store path afterwards.
+-->
 
 ### Name and Store Directory
 
