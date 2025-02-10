@@ -116,6 +116,15 @@ stdenv.mkDerivation {
 }
 ```
 
+If a fetchurl derivation followed the normal translation scheme, the output paths of the derivation and *all derivations depending on it* would change.
+For instance, if we were to change the URL of the Glibc source distribution—a component on which almost all other components depend—massive rebuilds will ensue.
+This is unfortunate for a change which we know cannot have a real effect as it propagates upwards through the dependency graph.
+
+Fixed-output derivations solve this problem by allowing a derivation to state to Nix that its output will hash to a specific value.
+When Nix builds the derivation, it will hash the output and check that the hash corresponds to the declared value.
+If there is a hash mismatch, the build fails and the output is not registered as valid.
+For fixed-output derivations, the computation of the output path only depends on the declared hash and hash algorithm, *not* on any other attributes of the derivation.
+
 ### (Floating) Content-Addressing
 
 > **Warning**
@@ -137,7 +146,21 @@ It also implicitly requires that the machine to build the derivation must have t
 That is to say, with input addressing the outputs store path is a function not of the output itself, but the derivation that produced it.
 Even if two store paths have the same contents, if they are produced in different ways, and one is input-addressed, then they will have different store paths, and thus guaranteed to not be the same store object.
 
+### Modulo fixed-output derivations
+
 **TODO hash derivation modulo.**
+
+So how do we compute the hash part of the output path of a derivation?
+This is done by the function `hashDrv`, shown in Figure 5.10.
+It distinguishes between two cases.
+If the derivation is a fixed-output derivation, then it computes a hash over just the `outputHash` attributes.
+
+If the derivation is not a fixed-output derivation, we replace each element in the derivation’s inputDrvs with the result of a call to `hashDrv` for that element.
+(The derivation at each store path in `inputDrvs` is converted from its on-disk ATerm representation back to a `StoreDrv` by the function `parseDrv`.) In essence, `hashDrv` partitions store derivations into equivalence classes, and for hashing purpose it replaces each store path in a derivation graph with its equivalence class.
+
+The recursion in Figure 5.10 is inefficient:
+it will call itself once for each path by which a subderivation can be reached, i.e., `O(V k)` times for a derivation graph with `V` derivations and with out-degree of at most `k`.
+In the actual implementation, memoisation is used to reduce this to `O(V + E)` complexity for a graph with E edges.
 
 [xp-feature-ca-derivations]: @docroot@/development/experimental-features.md#xp-feature-ca-derivations
 [xp-feature-dynamic-derivations]: @docroot@/development/experimental-features.md#xp-feature-dynamic-derivations
